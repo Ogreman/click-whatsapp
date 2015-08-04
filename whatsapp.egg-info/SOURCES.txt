@@ -1,0 +1,8 @@
+README
+whatsapp.py
+whatsapp.egg-info/PKG-INFO
+whatsapp.egg-info/SOURCES.txt
+whatsapp.egg-info/dependency_links.txt
+whatsapp.egg-info/entry_points.txt
+whatsapp.egg-info/requires.txt
+whatsapp.egg-info/top_level.txt
