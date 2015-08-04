@@ -3,6 +3,7 @@
 import sqlite3 as lite
 import click
 import os
+from collections import namedtuple
 
 # TODO: convert to click app
 # TODO: stream with notifications (from db)
@@ -10,6 +11,9 @@ import os
 DB_LOCATION = 'SOMETHING.db'
 MESSAGE_TABLE = 'ZWAMESSAGE'
 SESSION_TABLE = 'ZWACHATSESSION'
+
+
+Message = namedtuple('Message', ['Id', 'Session', 'Name', 'Text'])
 
 
 class Config(object):
@@ -106,14 +110,14 @@ class SQLHelper(object):
     def select(cur, table_name, what="*"):
         cur.execute("SELECT {0} FROM {1};".format(what, table_name))
         return cur.fetchall()
-    
+
     def import_messages_from_sql(self, sql):
         with self.memcon:
             self.memcon.row_factory = lite.Row
             cur = self.memcon.cursor()
             cur.executescript(sql)
             return (
-                (
+                Message(
                     row['Id'],
                     row['Session'],
                     row['Name'],
@@ -136,7 +140,7 @@ class SQLHelper(object):
             }
 
             return (
-                (
+                Message(
                     row['Z_PK'],
                     sessions[row['ZCHATSESSION']],
                     "me" if bool(row['ZISFROMME']) else row['ZPUSHNAME'] if row['ZPUSHNAME'] is not None else '',
@@ -162,7 +166,6 @@ class SQLHelper(object):
             )
             return '\n'.join(self.memcon.iterdump())
     
-
 
 pass_config = click.make_pass_decorator(Config, ensure=True)
 
@@ -243,8 +246,15 @@ def output(config, max_messages, session):
 
     if messages is not None:
         if session:
-            messages = filter(lambda m: m[1] == session, messages)
+            if config.debug:
+                click.secho(
+                    "Filtering messages on ({0})...".format(session), 
+                    fg="cyan"
+                )
+            messages = filter(lambda m: m.Session == session, messages)
         if config.reverse:
+            if config.debug:
+                click.secho("Reversing messages...", fg="cyan")
             messages = reversed(list(messages))
         
         for count, message in enumerate(messages):
@@ -252,15 +262,16 @@ def output(config, max_messages, session):
                 click.secho("message #%s" % count, fg="cyan")
             click.secho(
                 " ".join([
-                    "(" + message[1] + ")",
-                    message[2] + ":",
-                    message[3]
+                    "(" + message.Session + ")",
+                    message.Name + ":",
+                    message.Text
                 ]).encode('utf-8'),
                 fg="green"
             )
             if count == max_messages:
                 if config.verbose:
-                    click.secho("Done %s messages" % max_messages, fg="cyan")
+                    click.secho("Done %s messages" % max_messages)
                 break
 
-
+    if config.verbose:
+        click.secho("Done.", fg="green")
